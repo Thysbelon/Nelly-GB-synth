@@ -1,0 +1,10 @@
+setWinCompPath.txt
+*.exe
+*.o
+*.d
+*.so
+*.dll
+nellyGB.lv2/
+backup/
+temp/
+windows-build/

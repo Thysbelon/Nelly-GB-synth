@@ -1,0 +1,11 @@
+CFLAGS += `pkg-config --cflags lv2` # lv2 is not an ubuntu package, but lv2-dev is
+LDFLAGS += `pkg-config --libs lv2`
+CC=gcc
+
+all: nellyGB.so
+
+nellyGB.so: src/plugin.c src/furnace-tracker-sameboy-core/apu.c src/furnace-tracker-sameboy-core/timing.c
+	$(CC) -I./src/furnace-tracker-sameboy-core/ -fPIC -shared -o $@ $^ $(CFLAGS) $(LDFLAGS)
+
+clean:
+	rm nellyGB.so
