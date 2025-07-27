@@ -4,6 +4,7 @@ setWinCompPath.txt
 *.d
 *.so
 *.dll
+*.zip
 nellyGB.lv2/
 backup/
 temp/

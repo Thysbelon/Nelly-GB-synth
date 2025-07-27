@@ -46,6 +46,7 @@ typedef struct {
 	uint8_t userVol[4]; // DAW users expect that if they set a CC07 vol, it will remain until the next CC07 vol. This plugin has to overwrite the vol setting in the APU to handle noteOffs, so the user's set vol will be saved here. Every time a noteOn happens, if the vol in the APU is different than the user's set vol, re-write the user's set vol to the APU. userVol store volume in GB format, not midi format.
 	uint8_t userEnvLen[4];
 	uint8_t userEnvDirec[4];
+	uint8_t userSoundLen[4];
 	uint8_t lastMidiNote[4];
 	uint16_t lastMidiPitchBend[4]; // 14-bit value
 	float prevSpeed;
@@ -123,6 +124,7 @@ static void resetInternalState(GameBoyPlugin* self, bool isInstantiate, double r
 		self->userVol[i]=0x0F; // GB format!
 		self->userEnvLen[i]=0; 
 		self->userEnvDirec[i]=0; // an env direc of "up" and an env length of 0 leads to volume weirdness.
+		self->userSoundLen[i]=0;
 		self->lastMidiNote[i]=72; // C4
 		self->lastMidiPitchBend[i]=0x2000; // center.
 	}
@@ -190,10 +192,15 @@ uint16_t midiNoteAndPitchBend2gbPitch(uint8_t midiNote, uint16_t midiPitchBend, 
 	}
 }
 
-void writeNewPitchToAPU(GB_gameboy_t* gbPointer, uint16_t newPitch, uint8_t channel, bool isTrigger){
+void writeNewPitchToAPU(GB_gameboy_t* gbPointer, uint16_t newPitch, uint8_t channel, bool isTrigger, uint8_t soundLenEn){
 	if (channel!=3) {
-		uint8_t regVal = GB_apu_read(gbPointer, GB_IO_NR14 + channel*5) & 0b01000000; // preserve length enable
-		// NOTE: GB_apu_read can return garbage bits from areas that are write-only! Remember to always zero-out bits that are not needed.
+		uint8_t regVal = 0;
+		if (soundLenEn < 2) {
+			regVal |= soundLenEn << 6;
+		} else {
+			regVal = GB_apu_read(gbPointer, GB_IO_NR14 + channel*5) & 0b01000000; // preserve length enable
+			// NOTE: GB_apu_read can return garbage bits from areas that are write-only! Remember to always zero-out bits that are not needed.
+		}
 		regVal |= (uint8_t)((newPitch & 0b0000011100000000)>>8);
 		if (isTrigger) regVal |= 0b10000000;
 		GB_apu_write(gbPointer, GB_IO_NR14 + channel*5, regVal);
@@ -208,6 +215,11 @@ void writeNewPitchToAPU(GB_gameboy_t* gbPointer, uint16_t newPitch, uint8_t chan
 		regVal |= ((uint8_t)newPitch & 0b11110111);
 		GB_apu_write(gbPointer, GB_IO_NR43, regVal);
 	}
+}
+
+uint8_t convertMidiValToRange(uint8_t inMidiVal, uint8_t outValMax){ // used to convert midi vals to register bit val range.
+	const uint8_t MIDI_CC_MAX = 0x7F;
+	return (uint8_t)round((float)outValMax * ((float)inMidiVal / MIDI_CC_MAX));
 }
 // private functions end
 
@@ -440,23 +452,58 @@ static void run(LV2_Handle instance, uint32_t n_samples) { // most of the code s
 								GB_apu_write(&(self->gb), GB_IO_NR12 + channel*5, regVal);
 							}
 							break;
+						// TODO: find a gbs to TEST sound length and sweep settings.
 						case 14: /*sound length enable*/
+							uint8_t soundLenEn = msg[2] >= 64 ? 1 : 0;
+							newPitch = midiNoteAndPitchBend2gbPitch(self->lastMidiNote[channel], self->lastMidiPitchBend[channel], channel, self->NOISE_PITCH_LIST); // pitch is write-only. rewrite pitch so it isn't lost.
+							writeNewPitchToAPU(&(self->gb), newPitch, channel, noteTriggered[channel], soundLenEn);
 							break;
-						case 15: /*sound length*/
+						case 15: /*sound length*/ // TODO: verify that the correct value is being written to the GB APU register; it sounds a bit short.
+							uint8_t soundLen = convertMidiValToRange(msg[2], channel == 2 ? 0xFF : 0x3F);
+							if (channel == 2) {
+								GB_apu_write(&(self->gb), GB_IO_NR11 + channel*5, soundLen);
+							} else {
+								regVal = GB_apu_read(&(self->gb), GB_IO_NR11 + channel*5);
+								regVal &= 0b11000000; // preserve duty cycle.
+								regVal |= (soundLen & 0b00111111);
+								GB_apu_write(&(self->gb), GB_IO_NR11 + channel*5, regVal);
+							}
+							self->userSoundLen[channel] = soundLen;
 							break;
 						case LV2_MIDI_CTL_MSB_GENERAL_PURPOSE1: // sweep speed
+							if (channel == 0){
+								uint8_t sweepSpeed = convertMidiValToRange(msg[2], 7);
+								regVal = GB_apu_read(&(self->gb), GB_IO_NR10);
+								regVal &= 0b00001111;
+								regVal |= ((sweepSpeed & 0b111) << 4);
+								GB_apu_write(&(self->gb), GB_IO_NR10, regVal);
+							}
 							break;
 						case LV2_MIDI_CTL_MSB_GENERAL_PURPOSE2: // sweep shift
+							if (channel == 0){
+								uint8_t sweepShift = convertMidiValToRange(msg[2], 7);
+								regVal = GB_apu_read(&(self->gb), GB_IO_NR10);
+								regVal &= 0b01111000;
+								regVal |= (sweepShift & 0b111);
+								GB_apu_write(&(self->gb), GB_IO_NR10, regVal);
+							}
 							break;
-						case LV2_MIDI_CTL_MSB_GENERAL_PURPOSE3: // sweep up or down. TODO: for readability, sweep should go up when cc18 is 127, and down when cc18 is 0
+						case LV2_MIDI_CTL_MSB_GENERAL_PURPOSE3: // sweep up or down. TODO: for readability, pitch should go up when cc18 is 127, and down when cc18 is 0
+							if (channel == 0){
+								uint8_t sweepDir = convertMidiValToRange(msg[2], 1);
+								regVal = GB_apu_read(&(self->gb), GB_IO_NR10);
+								regVal &= 0b01110111;
+								regVal |= ((sweepDir & 1) << 3);
+								GB_apu_write(&(self->gb), GB_IO_NR10, regVal);
+							}
 							break;
 						case LV2_MIDI_CTL_MSB_GENERAL_PURPOSE4: // duty cycle A.K.A. pulse width
 							if (channel <= 1) { // square channels
 								uint8_t dutyCycleVal=0;
 								dutyCycleVal = (uint8_t)round(((float)msg[2] / 0x7F) * 3);
-								// TODO: store the user's set length timer in self, then re-set it here.
 								regVal=0;
 								regVal |= (dutyCycleVal << 6);
+								regVal |= (self->userSoundLen[channel] & 0b00111111); // sound length is write-only. Rewrite it so it isn't lost
 								GB_apu_write(&(self->gb), GB_IO_NR11 + channel*5, regVal);
 							}
 							break;
@@ -488,7 +535,7 @@ static void run(LV2_Handle instance, uint32_t n_samples) { // most of the code s
 							GB_apu_write(&(self->gb), GB_IO_NR30, 0b10000000); // turn on DAC
 							GB_advance_cycles(&(self->gb), 1);
 							newPitch = midiNoteAndPitchBend2gbPitch(self->lastMidiNote[channel], self->lastMidiPitchBend[channel], channel, self->NOISE_PITCH_LIST); // pitch is write-only. rewrite pitch so it isn't lost.
-							writeNewPitchToAPU(&(self->gb), newPitch, channel, true); // trigger channel
+							writeNewPitchToAPU(&(self->gb), newPitch, channel, true, 0xFF); // trigger channel
 							noteTriggered[channel]=true;
 							break;
 						case 22: // disable note off
@@ -504,13 +551,13 @@ static void run(LV2_Handle instance, uint32_t n_samples) { // most of the code s
 									self->legatoState[channel] = true;
 									if (noteOn[channel]==true) { // when a legatoState change happens at the same time as a note, the note should immediately be affected by the legatoState change.
 										newPitch = midiNoteAndPitchBend2gbPitch(self->lastMidiNote[channel], self->lastMidiPitchBend[channel], channel, self->NOISE_PITCH_LIST); // pitch is write-only. rewrite pitch so it isn't lost.
-										writeNewPitchToAPU(&(self->gb), newPitch, channel, false);
+										writeNewPitchToAPU(&(self->gb), newPitch, channel, false, 0xFF);
 									}
 								} else {
 									self->legatoState[channel] = false;
 									if (noteOn[channel]==true) { // when a legatoState change happens at the same time as a note, the note should immediately be affected by the legatoState change.
 										newPitch = midiNoteAndPitchBend2gbPitch(self->lastMidiNote[channel], self->lastMidiPitchBend[channel], channel, self->NOISE_PITCH_LIST); // pitch is write-only. rewrite pitch so it isn't lost.
-										writeNewPitchToAPU(&(self->gb), newPitch, channel, true);
+										writeNewPitchToAPU(&(self->gb), newPitch, channel, true, 0xFF);
 										noteTriggered[channel]=true;
 									}
 								}
@@ -547,7 +594,7 @@ static void run(LV2_Handle instance, uint32_t n_samples) { // most of the code s
 								regVal = 0b00001000; // set envelope direction to "up" to silence the channel WITHOUT turning off the DAC (which could cause a pop)
 								GB_apu_write(&(self->gb), GB_IO_NR12 + channel*5, regVal);
 								newPitch = midiNoteAndPitchBend2gbPitch(self->lastMidiNote[channel], self->lastMidiPitchBend[channel], channel, self->NOISE_PITCH_LIST); // pitch is write-only. rewrite pitch so it isn't lost.
-								writeNewPitchToAPU(&(self->gb), newPitch, channel, true); // have to retrigger the channel for the silence to take effect.
+								writeNewPitchToAPU(&(self->gb), newPitch, channel, true, 0xFF); // have to retrigger the channel for the silence to take effect.
 								noteTriggered[channel]=true;
 							}
 						} else { // wave
@@ -594,7 +641,7 @@ static void run(LV2_Handle instance, uint32_t n_samples) { // most of the code s
 					// play note
 					if (self->legatoState[channel] == false){isTrigger=true; noteTriggered[channel] = channel == 2 ? false : true;}
 					newPitch = midiNoteAndPitchBend2gbPitch(msg[1] & 0x7F, self->lastMidiPitchBend[channel], channel, self->NOISE_PITCH_LIST);
-					writeNewPitchToAPU(&(self->gb), newPitch, channel, channel==2 ? false : isTrigger);
+					writeNewPitchToAPU(&(self->gb), newPitch, channel, channel==2 ? false : isTrigger, 0xFF);
 					
 					self->lastMidiNote[channel] = msg[1] & 0x7F;
 					break;
@@ -605,7 +652,7 @@ static void run(LV2_Handle instance, uint32_t n_samples) { // most of the code s
 						newPitch = midiNoteAndPitchBend2gbPitch(self->lastMidiNote[channel], midiPitchBend, channel, self->NOISE_PITCH_LIST);
 						// if the channel was already triggered at this pos, it should remain triggered. Otherwise, midi pitch bends will never retrigger the gb channel.
 						if (noteTriggered[channel]) isTrigger=true;
-						writeNewPitchToAPU(&(self->gb), newPitch, channel, isTrigger);
+						writeNewPitchToAPU(&(self->gb), newPitch, channel, isTrigger, 0xFF);
 						pitchBended[channel]=true;
 						self->lastMidiPitchBend[channel] = midiPitchBend;
 					}
