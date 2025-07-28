@@ -38,15 +38,15 @@ An LV2 synthesizer plugin that emulates the Game Boy's APU and converts Midi eve
 - Envelope Length (CC13) (custom):  
 	Sets the length of the envelope. 0 disables the envelope and makes volume constant. A high number is a long envelope, a low number is a short envelope.
 - Sound Length Enable (CC14) (custom):  
-	**Not functional in the beta release**. Will set whether the sound length feature is enabled or disabled.
+	Sets whether the sound length feature is enabled or disabled. 0 is disabled, 127 is enabled.
 - Sound Length (CC15) (custom):  
-	**Not functional in the beta release**. Will set the length before the channel is automatically silenced.
+	Sets the length before the channel is automatically silenced. The lower the value, the longer the time before the channel is silenced.
 - Sweep Speed (CC16) (custom):  
-	**Not functional in the beta release**. Will set the speed of a sweep (singular pitch slide up or down)
+	Sets the speed of a sweep (singular pitch slide up or down).
 - Sweep Shift (CC17) (custom):  
-	**Not functional in the beta release**.
+	Sets how much the pitch changes each "step".
 - Sweep Direction (CC18) (custom):  
-	**Not functional in the beta release**. Will set whether a sweep should cause the pitch to increase or decrease.
+	Sets whether a sweep should cause the pitch to increase or decrease.
 - Duty Cycle (CC19) (custom):  
 	Sets the shape of a square's waveform.
 - Noise Length (CC20) (custom):  
