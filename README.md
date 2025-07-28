@@ -56,7 +56,7 @@ An LV2 synthesizer plugin that emulates the Game Boy's APU and converts Midi eve
 - Disable Note Off (CC22) (custom):  
 	Doesn't affect any one GB register. When this CC is 127, midi note off events have no effect at all.
 - Legato Footswitch (CC68) (semi-custom):  
-	Doesn't affect any one GB register. When this CC is 127, Legato Mode is turned on and any Midi Note On events will not trigger the channel. (midi note off events also have no effect when Legato Mode is on)
+	Doesn't affect any one GB register. When this CC is 127, Legato Mode is turned on and any Midi Note On events will change pitch without triggering the channel and resetting envelopes. (midi note off events also have no effect when Legato Mode is on)
 
 ## Usage Tips
 
