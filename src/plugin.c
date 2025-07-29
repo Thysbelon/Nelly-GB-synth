@@ -79,6 +79,7 @@ static void resetInternalState(GameBoyPlugin* self, bool isInstantiate, double r
 	} else {
 		printf("Warning: GB sample rate not set!\n");
 	}
+	GB_set_highpass_filter_mode(&(self->gb), GB_HIGHPASS_ACCURATE); // the default mode is GB_HIGHPASS_OFF
 	GB_apu_write(&(self->gb), GB_IO_NR10, 0);
 	GB_apu_write(&(self->gb), GB_IO_NR52, 0x8f); // writing to bits 3-0 of this register *shouldn't* do anything because those bits are read only.
 	GB_apu_write(&(self->gb), GB_IO_NR51, 0xFF);
@@ -109,11 +110,10 @@ static void resetInternalState(GameBoyPlugin* self, bool isInstantiate, double r
 	for (int i=0; i<0xFFFF; i++){
 		GB_advance_cycles(&(self->gb), 0xFF);
 		//12240
-		if (self->gb.apu_output.final_sample.left == 12240) break;
+		if (self->gb.apu_output.final_sample.left == 0) break;
 		if (i==0xFFFF-1) printf("loop never broke\n");
 	}
-	// The pop is NOT caused by the APU powering on, it's caused by the fact that silence is not translated to float 0, so when the plugin activates, the DAW's output jumps from constant 0 to constant ~0.4, and that makes a pop.
-	// When the GB APU is silent, it outputs the int16 sample 12240.
+	// advance past APU pop
 	
 	// I and users should avoid anything that turns the channel off. It will cause the next note played to be too loud
 	
@@ -667,9 +667,8 @@ static void run(LV2_Handle instance, uint32_t n_samples) { // most of the code s
 		//The sample is rendered to gb.apu_output.final_sample as an int16
 		//printf("Silence sample value (int16): %d %d\n", self->gb.apu_output.final_sample.left, self->gb.apu_output.final_sample.right); // 12240
 		// LV2: "Audio samples are normalized between -1.0 and 1.0"
-		// subtract all samples by the non-0 silence sample (12240) in order to set silence to 0, then multiply all samples to normalize the loudness. Then convert to float
-		self->outputLeft[pos] = (float)((self->gb.apu_output.final_sample.left - 12240)) / (float)32768;
-		self->outputRight[pos] = (float)((self->gb.apu_output.final_sample.right - 12240)) / (float)32768;
+		self->outputLeft[pos] = (float)((self->gb.apu_output.final_sample.left)) / (float)32768;
+		self->outputRight[pos] = (float)((self->gb.apu_output.final_sample.right)) / (float)32768;
 	}
 	
 	LV2_ATOM_SEQUENCE_FOREACH (self->inTime, ev) {
