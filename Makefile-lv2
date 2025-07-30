@@ -8,4 +8,5 @@ nellyGB.so: src/plugin.c src/furnace-tracker-sameboy-core/apu.c src/furnace-trac
 	$(CC) -I./src/furnace-tracker-sameboy-core/ -fPIC -shared -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 clean:
+	rm *.o
 	rm nellyGB.so

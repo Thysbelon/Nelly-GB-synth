@@ -665,7 +665,6 @@ static void run(LV2_Handle instance, uint32_t n_samples) { // most of the code s
 		}
 		GB_advance_cycles(&(self->gb), (uint8_t)(self->gb.apu_output.cycles_per_sample / 2)); // gb.apu_output.cycles_per_sample is doubled from what I expected it to be. Probably something to do with the word "sample" sometimes refering to an audio frame with left and right, and sometimes refering to a single sample from either the left OR right channel.
 		//The sample is rendered to gb.apu_output.final_sample as an int16
-		//printf("Silence sample value (int16): %d %d\n", self->gb.apu_output.final_sample.left, self->gb.apu_output.final_sample.right); // 12240
 		// LV2: "Audio samples are normalized between -1.0 and 1.0"
 		self->outputLeft[pos] = (float)((self->gb.apu_output.final_sample.left)) / (float)32768;
 		self->outputRight[pos] = (float)((self->gb.apu_output.final_sample.right)) / (float)32768;

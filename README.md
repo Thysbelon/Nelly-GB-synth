@@ -1,6 +1,6 @@
 # Nelly GB Synth
 
-An LV2 synthesizer plugin that emulates the Game Boy's APU and converts Midi events into Game Boy APU register writes.
+An LV2 and CLAP synthesizer plugin that emulates the Game Boy's APU and converts Midi events into Game Boy APU register writes.
 
 ## Midi Event to Game Boy APU Register Reference
 
@@ -79,6 +79,12 @@ If, when editing the song, you notice that notes right next to eachother seem to
 This happens because this plugin resets its internal emulated APU whenever playback is paused. This is necessary in order to make sure that loud sounds do not continously play when playback is paused, but it also clears wave data from the APU's memory (though the wave data is still stored in the plugin's memory, and the correct wave will be played when resuming the song).
 
 I work around this by placing my notes on channel 1 or 2, then moving those notes to channel 3. This workaround works best if you also have each midi channel on a separate track in your DAW.
+
+## Information For Software Developers
+
+The clap folder in src should contain the contents of [the clap repository's include folder](https://github.com/free-audio/clap/tree/main/include/clap).
+
+The last time I worked on the CLAP version of this plugin, I used [CLAP commit 69a6925](https://github.com/free-audio/clap/tree/69a69252fdd6ac1d06e246d9a04c0a89d9607a17).
 
 ## Credits
 
