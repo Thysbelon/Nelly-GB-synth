@@ -80,6 +80,10 @@ This happens because this plugin resets its internal emulated APU whenever playb
 
 I work around this by placing my notes on channel 1 or 2, then moving those notes to channel 3. This workaround works best if you also have each midi channel on a separate track in your DAW.
 
+### Other
+
+[Please do not attempt to use this plugin in FL Studio](https://gist.github.com/Thysbelon/a69da7038e65023a29168d9ef449acda).
+
 ## Information For Software Developers
 
 The clap folder in src should contain the contents of [the clap repository's include folder](https://github.com/free-audio/clap/tree/main/include/clap).
