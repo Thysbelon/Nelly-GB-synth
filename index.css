@@ -70,9 +70,6 @@ a.button-link {
 	margin-left:auto;
 	margin-right:auto;
 }
-.deco-text{
-	font-family: Silkscreen, serif;
-}
 #download-link{
 	font-size: 150%;
 }
@@ -80,9 +77,9 @@ a.button-link {
 h1 {
 	text-align:center;
 }
-h1, h2 {
+h1, h2, .deco-text {
 	font-family: Silkscreen, serif;
 }
-h1:lang(ja) {
+h1:lang(ja), h2:lang(ja), .deco-text:lang(ja) {
 	font-family: DotGothic16, serif;
 }
