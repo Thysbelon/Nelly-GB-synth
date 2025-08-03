@@ -22,16 +22,16 @@
 <dl>
 <dt>SysEx:
 <dd>
-Contains all of the wavetable data used in a song. This event should be placed at the start of a midi file.  
-<br>The wave data consists of values from 0x00 to 0x0F.  
-<br>example of a sysex message that contains two waves (line breaks added.):  
+曲に使うあらゆるウェーブテーブルのデータを含んでいる。このメッセージをMIDIファイルのスタートに置くべき。
+<br>ウェーブのデータは0x00から0x0Fまで値からなる。 
+<br>２つのウェーブを含んでいるSysExメッセージお例え（改行を足しました）：
 <pre><code>F0
 0F 0F 0F 0F 0F 0D 0B 08 05 03 01 00 00 00 00 00 00 00 00 00 00 01 03 05 08 0B 0D 0F 0F 0F 0F 0F 
 00 00 00 00 00 00 00 00 00 00 00 00 0F 0F 00 00 00 00 00 00 00 00 00 00 00 00 00 00 0F 0F 00 00 
 F7</code></pre>
-The plugin currently doesn't have a user interface, so I recommend using <a target=_blank href=https://github.com/tildearrow/furnace>Furnace</a>'s wavetable editor to create waves, then copy and paste the hexadecimal representation of the wave data into a midi sysex message.
+当分ＵＩがないので、<a target=_blank href=https://github.com/tildearrow/furnace>Furnace</a>のウェーブテーブルのエディターでウェーブを作ってウェーブのデータの十六進の形式をSysExメッセージにコピペすることを勧めます。
 </dd>
-<dt>Midi Note On:
+<dt>MIDIノートオン:
 <dd>This midi event affects multiple GB registers:
 	<ul>
 	<li>Sets the pitch to the pitch of the note
@@ -39,42 +39,42 @@ The plugin currently doesn't have a user interface, so I recommend using <a targ
 	<li>Resets the volume (and envelope) of the channel if it was silenced by a note off event. The values are reset to whatever the last CC-defined value was.
 	</ul>
 </dd>
-<dt>Midi Note Off: 
+<dt>MIDIノートオフ: 
 <dd>Silences the channel.  
 <br>(On channels with an envelope, envelope direction will be set to "up" and envelope length will be set to zero.)  
 <br>Because the Game Boy APU doesn't have anything like a note off, the plugin is designed so that midi note off events only have a temporary effect on the Game Boy APU. If the volume (or envelope) is changed or another note is played, the channel will no longer be silent.
-<dt>Pitch Bend:
+<dt>ピッチベンド:
 <dd>Changes the pitch of a channel without triggering it.  
 <br>Currently, this plugin does not allow the user to change the pitch bend range, but this will be added in a future release. In the meantime, the user can create large pitch bends by using Legato Mode.
-<dt>Volume MSB (CC07):  
+<dt>メイン・ヴォリューム（CC07）：
 <dd>Sets the volume of the channel
-<dt>Pan (CC10):  
+<dt>パンポット（CC10）：
 <dd>Sets the stereo panning of the channel. The Game Boy can only pan hard left, hard right, or center.
-<dt>Pan Mute (CC09) (custom):  
+<dt>パンのミュート (CC09) (カスタム):  
 <dd>In the Game Boy APU, it is possible to mute a channel by setting the panning value to 0. The Midi pan control does not have this functionality, so CC09 sets the panning register to 0 when CC09 is 127.
 <dt>Envelope Direction (CC12) (custom):  
 <dd>Sets whether the volume envelope should gradually increase or decrease volume. 127 is increase, 0 is decrease.
-<dt>Envelope Length (CC13) (custom):  
+<dt>Envelope Length（「Sweep Pace」とも言い） (CC13) (custom):  
 <dd>Sets the length of the envelope. 0 disables the envelope and makes volume constant. A high number is a long envelope, a low number is a short envelope.
 <dt>Sound Length Enable (CC14) (custom):  
 <dd>Sets whether the sound length feature is enabled or disabled. 0 is disabled, 127 is enabled.
-<dt>Sound Length (CC15) (custom):  
+<dt>Sound Length（「Initial length timer」とも言い） (CC15) (custom):  
 <dd>Sets the length before the channel is automatically silenced. The lower the value, the longer the time before the channel is silenced.
-<dt>Sweep Speed (CC16) (custom):  
+<dt>Sweep Speed（「Pace」とも言い） (CC16) (custom):  
 <dd>Sets the speed of a sweep (singular pitch slide up or down).
-<dt>Sweep Shift (CC17) (custom):  
+<dt>Sweep Shift（「Individual step」とも言い） (CC17) (custom):  
 <dd>Sets how much the pitch changes each "step".
 <dt>Sweep Direction (CC18) (custom):  
 <dd>Sets whether a sweep should cause the pitch to increase or decrease.
 <dt>Duty Cycle (CC19) (custom):  
 <dd>Sets the shape of a square's waveform.
-<dt>Noise Length (CC20) (custom):  
+<dt>Noise Length（「LSFR width」とも言い） (CC20) (custom):  
 <dd>Sets whether the noise should be long (percussive) or short (slightly melodic). 0 is long and 127 is short.
-<dt>Wave Index Selector (CC21) (custom):  
+<dt>ウェーブのセレクト (CC21) (custom):  
 <dd>Sets the waveform to use for the wave channel from the list given in a sysex message. A midi file can have up to 127 waves.
-<dt>Disable Note Off (CC22) (custom):  
+<dt>ノートオフのディセーブル(CC22) (custom):  
 <dd>Doesn't affect any one GB register. When this CC is 127, midi note off events have no effect at all.
-<dt>Legato Footswitch (CC68) (semi-custom):  
+<dt>レガート (CC68) (semi-custom):  
 <dd>Doesn't affect any one GB register. When this CC is 127, Legato Mode is turned on and any Midi Note On events will change pitch without triggering the channel and resetting envelopes. (midi note off events also have no effect when Legato Mode is on)
 </dl>
 
@@ -99,14 +99,14 @@ The plugin currently doesn't have a user interface, so I recommend using <a targ
 <p>This happens because this plugin resets its internal emulated APU whenever playback is paused. This is necessary in order to make sure that loud sounds do not continously play when playback is paused, but it also clears wave data from the APU's memory (though the wave data is still stored in the plugin's memory, and the correct wave will be played when resuming the song).
 
 <p>I work around this by placing my notes on channel 1 or 2, then moving those notes to channel 3. This workaround works best if you also have each midi channel on a separate track in your DAW.
-
+<!--
 <h3>Other</h3>
 
 <p><a href=https://gist.github.com/Thysbelon/a69da7038e65023a29168d9ef449acda target=_blank>Please do not attempt to use this plugin in FL Studio</a>.
-
+-->
 <h2>Credits</h2>
 
 <p>This plugin uses <a href=https://github.com/tildearrow/furnace target=_blank>Furnace</a>'s Game Boy APU emulation core, which is itself derived from <a href=https://github.com/LIJI32/SameBoy target=_blank>SameBoy</a>'s APU emulation code.
--->
+
 <hr>
 <p><a href=https://github.com/Thysbelon/Nelly-GB-synth>GitHubのリポジトリ</a>, <a href=index.html lang="en">English</a>
