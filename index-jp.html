@@ -10,7 +10,11 @@
 </head>
 <body>
 <h1>ネリーＧＢ</h1>
-<!--<p>VIDEO WALKTHROUGH EMBED HERE-->
+<figure class=song-demo>
+	<figcaption>A Cover of Alkan's Étude in A minor (Op. None) Made Using Nelly GB:</figcaption>
+	<audio controls src="NellyGBdemo_2_9_mid_lv2.flac"></audio>
+	<a download href="NellyGBdemo_2_9.mid">Download midi file</a>
+</figure>
 <p>ゲームボーイのAPUをエミュレートしてMIDIメッセージをゲームボーイのAPUのレジスタの書き込みにコンバートするLV2かCLAPのシンセサイザーのプラグイン。
 <!--
 <p>The goal of this plugin is to provide an intuitive way to create music that is accurate to the sound of the Game Boy.
@@ -99,6 +103,10 @@ F7</code></pre>
 <p>This happens because this plugin resets its internal emulated APU whenever playback is paused. This is necessary in order to make sure that loud sounds do not continously play when playback is paused, but it also clears wave data from the APU's memory (though the wave data is still stored in the plugin's memory, and the correct wave will be played when resuming the song).
 
 <p>I work around this by placing my notes on channel 1 or 2, then moving those notes to channel 3. This workaround works best if you also have each midi channel on a separate track in your DAW.
+
+<h3>Notes Don't End When They Should When Using CLAP Plugin</h3>
+
+<p>I've noticed that the CLAP version of the plugin does not properly end the note when the note off message has a velocity of 0 or undefined. To fix this, please edit your midi to set all note off velocity values to 127.
 <!--
 <h3>Other</h3>
 

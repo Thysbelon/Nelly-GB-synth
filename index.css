@@ -73,6 +73,12 @@ a.button-link {
 #download-link{
 	font-size: 150%;
 }
+figure.song-demo audio, figure.song-demo a{
+	display:block;
+	margin-left:auto;
+	margin-right:auto;
+	width:max-content;
+}
 
 h1 {
 	text-align:center;
