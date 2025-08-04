@@ -80,6 +80,10 @@ This happens because this plugin resets its internal emulated APU whenever playb
 
 I work around this by placing my notes on channel 1 or 2, then moving those notes to channel 3. This workaround works best if you also have each midi channel on a separate track in your DAW.
 
+### Notes Don't End When They Should When Using CLAP Plugin
+
+I've noticed that the CLAP version of the plugin does not properly end the note when the note off message has a velocity of 0 or undefined. To fix this, please edit your midi to set all note off velocity values to 127. 
+
 ### Other
 
 [Please do not attempt to use this plugin in FL Studio](https://gist.github.com/Thysbelon/a69da7038e65023a29168d9ef449acda).
