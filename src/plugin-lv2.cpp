@@ -121,7 +121,7 @@ static void
 activate(LV2_Handle instance) {
 	printf("activate called.\n");
 	resetInternalState(&(((GameBoyPlugin*)instance)->core), 0, false);
-	self->prevSpeed = 0;
+	((GameBoyPlugin*)instance)->prevSpeed = 0;
 }
 
 static void run(LV2_Handle instance, uint32_t n_samples) { // most of the code should be in here. n_samples refers to audio frames, not interleaved samples.
