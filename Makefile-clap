@@ -3,7 +3,7 @@ CPPC=g++
 
 all: nellyGB.clap
 
-nellyGB.clap: src/plugin-clap.cpp apu.o timing.o
+nellyGB.clap: src/plugin-clap.cpp src/plugin-core.cpp apu.o timing.o
 	$(CPPC) -I./src/furnace-tracker-sameboy-core/ -shared -g -Wall -Wextra -Wno-unused-parameter -o $@ $^
 
 apu.o: src/furnace-tracker-sameboy-core/apu.c

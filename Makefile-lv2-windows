@@ -5,16 +5,24 @@
 CFLAGS += `pkg-config --cflags lv2`
 LDFLAGS += `pkg-config --libs lv2`
 CC=x86_64-w64-mingw32-gcc
+CPPC=x86_64-w64-mingw32-g++
 
 all: nellyGB.dll
 
-nellyGB.dll: src/plugin.c src/furnace-tracker-sameboy-core/apu.c src/furnace-tracker-sameboy-core/timing.c
+nellyGB.dll: src/plugin-lv2.cpp src/plugin-core.cpp apu.o timing.o
 	rm -f -r temp
 	mkdir -p temp/my-lv2-include
 	ln -s /usr/include/lv2 temp/my-lv2-include/lv2
-	$(CC) -I./src/furnace-tracker-sameboy-core/ -I./temp/my-lv2-include -fPIC -shared -o $@ $^ $(CFLAGS) $(LDFLAGS)
+	$(CPPC) -I./src/furnace-tracker-sameboy-core/ -I./temp/my-lv2-include -fPIC -shared -o $@ $^ $(CFLAGS) $(LDFLAGS)
 	rm -f -r temp
 
+apu.o: src/furnace-tracker-sameboy-core/apu.c
+	$(CC) -c $^ -o $@ 
+
+timing.o: src/furnace-tracker-sameboy-core/timing.c
+	$(CC) -c $^ -o $@ 
+	
 clean:
+	rm *.o
 	rm -f nellyGB.dll
 	rm -f -r temp

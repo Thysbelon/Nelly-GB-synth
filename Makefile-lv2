@@ -1,11 +1,18 @@
 CFLAGS += `pkg-config --cflags lv2` # lv2 is not an ubuntu package, but lv2-dev is
 LDFLAGS += `pkg-config --libs lv2`
 CC=gcc
+CPPC=g++
 
 all: nellyGB.so
 
-nellyGB.so: src/plugin.c src/furnace-tracker-sameboy-core/apu.c src/furnace-tracker-sameboy-core/timing.c
-	$(CC) -I./src/furnace-tracker-sameboy-core/ -fPIC -shared -o $@ $^ $(CFLAGS) $(LDFLAGS)
+nellyGB.so: src/plugin-lv2.cpp src/plugin-core.cpp apu.o timing.o
+	$(CPPC) -I./src/furnace-tracker-sameboy-core/ -fPIC -shared -o $@ $^ $(CFLAGS) $(LDFLAGS)
+
+apu.o: src/furnace-tracker-sameboy-core/apu.c
+	$(CC) -c $^ -o $@ 
+
+timing.o: src/furnace-tracker-sameboy-core/timing.c
+	$(CC) -c $^ -o $@ 
 
 clean:
 	rm *.o
