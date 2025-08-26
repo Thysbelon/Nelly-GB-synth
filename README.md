@@ -51,8 +51,8 @@ An LV2 and CLAP synthesizer plugin that emulates the Game Boy's APU and converts
 	Sets the shape of a square's waveform.
 - Noise Length (CC20) (custom):  
 	Sets whether the noise should be long (percussive) or short (slightly melodic). 0 is long and 127 is short.
-- Wave Index Selector (CC21) (custom):  
-	Sets the waveform to use for the wave channel from the list given in a sysex message. A midi file can have up to 127 waves.
+- Wave Index Selector (CC21 and CC53) (custom):  
+	A 14-bit combined CC. CC21 is the MSB and CC53 is the LSB. Sets the waveform to use for the wave channel from the list given in a sysex message. A midi file can have up to 16383 waves.
 - Disable Note Off (CC22) (custom):  
 	Doesn't affect any one GB register. When this CC is 127, midi note off events have no effect at all.
 - Legato Footswitch (CC68) (semi-custom):  
