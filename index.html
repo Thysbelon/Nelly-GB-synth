@@ -12,8 +12,8 @@
 <h1>Nelly GB</h1>
 <figure class=song-demo>
 	<figcaption>A Cover of Alkan's Étude in A minor (Op. None) Made Using Nelly GB:</figcaption>
-	<audio controls src="NellyGBdemo_2_9_mid_lv2.flac"></audio>
-	<a download href="NellyGBdemo_2_9.mid">Download midi file</a>
+	<audio controls src="NellyGBdemo_ver_2_0_0_mid_lv2.flac"></audio>
+	<a download href="NellyGBdemo_ver_2_0_0.mid">Download midi file</a>
 </figure>
 <p>An LV2 and CLAP synthesizer plugin that emulates the Game Boy's APU and converts Midi events into Game Boy APU register writes.
 <p>The goal of this plugin is to provide an intuitive way to create music that is accurate to the sound of the Game Boy.
@@ -71,8 +71,8 @@ The plugin currently doesn't have a user interface, so I recommend using <a targ
 <dd>Sets the shape of a square's waveform.
 <dt>Noise Length (CC20) (custom):  
 <dd>Sets whether the noise should be long (percussive) or short (slightly melodic). 0 is long and 127 is short.
-<dt>Wave Index Selector (CC21) (custom):  
-<dd>Sets the waveform to use for the wave channel from the list given in a sysex message. A midi file can have up to 127 waves.
+<dt>Wave Index Selector (CC21 and CC53) (custom):
+<dd>A 14-bit combined CC. CC21 is the MSB and CC53 is the LSB. Sets the waveform to use for the wave channel from the list given in a sysex message. A midi file can have up to 16383 waves.
 <dt>Disable Note Off (CC22) (custom):  
 <dd>Doesn't affect any one GB register. When this CC is 127, midi note off events have no effect at all.
 <dt>Legato Footswitch (CC68) (semi-custom):  
