@@ -91,6 +91,7 @@ static const clap_plugin_t pluginClass = { // contains all of the plugin methods
 	.activate = [] (const clap_plugin *_plugin, double sampleRate, uint32_t minimumFramesCount, uint32_t maximumFramesCount) -> bool { 
 		GameBoyPlugin *self = (GameBoyPlugin *) _plugin->plugin_data;
 		resetInternalState(&(self->core), sampleRate);
+		self->prevPlaying=false;
 		return true;
 	},
 
@@ -107,6 +108,7 @@ static const clap_plugin_t pluginClass = { // contains all of the plugin methods
 	.reset = [] (const clap_plugin *_plugin) {
 		GameBoyPlugin *self = (GameBoyPlugin *) _plugin->plugin_data;
 		resetInternalState(&(self->core), 0);
+		self->prevPlaying=false;
 	},
 
 	.process = [] (const clap_plugin *_plugin, const clap_process_t *process) -> clap_process_status { 
@@ -191,6 +193,7 @@ static const clap_plugin_t pluginClass = { // contains all of the plugin methods
 				if (isPlaying == false) {
 					printf("isPlaying == false\n");
 					resetInternalState(&(self->core), 0);
+					self->prevPlaying=false;
 				} else {
 					printf("isPlaying == true\n");
 					self->prevPlaying = isPlaying;

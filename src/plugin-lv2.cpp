@@ -57,6 +57,7 @@ static LV2_Handle instantiate(const LV2_Descriptor*     descriptor,
             const LV2_Feature* const* features) {
 	GameBoyPlugin* self = (GameBoyPlugin*)calloc(1, sizeof(GameBoyPlugin));
 	resetInternalState(&(self->core), rate, true);
+	self->prevSpeed = 0;
 	
 	setUpNoisePitchList(&(self->core));
 	
@@ -120,6 +121,7 @@ static void
 activate(LV2_Handle instance) {
 	printf("activate called.\n");
 	resetInternalState(&(((GameBoyPlugin*)instance)->core), 0, false);
+	self->prevSpeed = 0;
 }
 
 static void run(LV2_Handle instance, uint32_t n_samples) { // most of the code should be in here. n_samples refers to audio frames, not interleaved samples.
@@ -203,6 +205,7 @@ static void run(LV2_Handle instance, uint32_t n_samples) { // most of the code s
 					if (curSpeed != self->prevSpeed) {
 						if (curSpeed == 0) {
 							resetInternalState(&(self->core), 0, false);
+							self->prevSpeed = 0;
 						} else {
 							self->prevSpeed = curSpeed;
 						}
