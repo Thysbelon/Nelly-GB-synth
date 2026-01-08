@@ -4,7 +4,7 @@ CPPC=x86_64-w64-mingw32-g++
 all: nellyGB.clap
 
 nellyGB.clap: src/plugin-clap.cpp src/plugin-core.cpp apu.o timing.o
-	$(CPPC) -I./src/furnace-tracker-sameboy-core/ -shared -g -Wall -Wextra -Wno-unused-parameter -o $@ $^
+	$(CPPC) -I./src/furnace-tracker-sameboy-core/ -shared -g -Wall -Wextra -Wno-unused-parameter -Wl,-Bstatic -lc++ -lunwind -Wl,-Bdynamic -o $@ $^
 
 apu.o: src/furnace-tracker-sameboy-core/apu.c
 	$(CC) -c $^ -o $@ 
