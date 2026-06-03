@@ -23,6 +23,6 @@ timing.o: src/furnace-tracker-sameboy-core/timing.c
 	$(CC) -c $^ -o $@ 
 	
 clean:
-	rm *.o
-	rm -f nellyGB.dll
-	rm -f -r temp
+	-rm *.o
+	-rm -f nellyGB.dll
+	-rm -f -r temp

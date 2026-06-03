@@ -31,6 +31,10 @@ struct GameBoyPluginCore { // The part of the plugin that is standard agnostic
 	uint8_t userSoundLen[4];
 	uint8_t lastMidiNote[4];
 	uint16_t lastMidiPitchBend[4]; // 14-bit value
+	//type curMidiPitchBendRange; // defaults to a range of 2 semitones above and below (total of 4).
+	
+	//user-visible parameters
+	GB_model_t curModel; // Whether the plugin is emulating original DMG Game Boy, Game Boy Color, Super Game Boy, Super Game Boy 2, Game Boy Advance, etc
 };
 
 // helper functions of gb plugin

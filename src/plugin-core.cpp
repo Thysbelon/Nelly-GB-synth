@@ -14,8 +14,11 @@
 // helper functions of gb plugin
 void resetInternalState(GameBoyPluginCore* self, double rate, bool isInstantiate){
 	memset(&(self->gb),0,sizeof(GB_gameboy_t));
-	self->gb.model = GB_MODEL_DMG_B; // TODO: make it possible for the user to set the model.
+	if (isInstantiate==true) {
+		self->gb.model = GB_MODEL_DMG_B; // default model.
+	}
 	GB_apu_init(&(self->gb));
+	if (isInstantiate==true) self->gb.model = GB_MODEL_DMG_B;
 	if (rate) {
 		printf("DAW sample rate: %lf\n", rate);
 		self->sampleRate=rate;
@@ -26,14 +29,15 @@ void resetInternalState(GameBoyPluginCore* self, double rate, bool isInstantiate
 		printf("Warning: GB sample rate not set!\n");
 	}
 	GB_set_highpass_filter_mode(&(self->gb), GB_HIGHPASS_ACCURATE); // the default mode is GB_HIGHPASS_OFF
-	GB_apu_write(&(self->gb), GB_IO_NR10, 0);
-	GB_apu_write(&(self->gb), GB_IO_NR52, 0x8f); // writing to bits 3-0 of this register *shouldn't* do anything because those bits are read only.
-	GB_apu_write(&(self->gb), GB_IO_NR51, 0xFF);
-	GB_apu_write(&(self->gb), GB_IO_NR50, 0x77);
-	//set env
+	GB_apu_write(&(self->gb), GB_IO_NR10, 0); // disable square 1 pitch sweep.
+	GB_apu_write(&(self->gb), GB_IO_NR52, 0x8f); // Power on APU. writing to bits 3-0 of this register *shouldn't* do anything because those bits are read only, but some emulators require them to be written to in order to enable channels.
+	GB_apu_write(&(self->gb), GB_IO_NR51, 0xFF); // Enable all channels and set panning to center.
+	GB_apu_write(&(self->gb), GB_IO_NR50, 0x77); // set master volume to max.
+	
+	//set env. Set volume to max, set envelope direction to down (decrease volume), and set envelope length to 0 (disables envelope).
 	GB_apu_write(&(self->gb), GB_IO_NR12, 0xF0);
 	GB_apu_write(&(self->gb), GB_IO_NR22, 0xF0);
-	//GB_apu_write(&(self->gb), GB_IO_NR32, 0);
+	GB_apu_write(&(self->gb), GB_IO_NR32, 0b01 << 5); // ?
 	GB_apu_write(&(self->gb), GB_IO_NR42, 0xF0);
 	// trigger channel
 	GB_apu_write(&(self->gb), GB_IO_NR14, 0x80);
@@ -44,6 +48,8 @@ void resetInternalState(GameBoyPluginCore* self, double rate, bool isInstantiate
 	GB_advance_cycles(&(self->gb), 0xFF); // TODO: reduce this cycle number to improve performance slightly.
 		
 	// trigger channel again with 0 vol. This shouldn't mess up the user playing notes, because this is the same state as after a note off.
+	// Envelope settings are: Volume 0, envelope direction up, and envelope length 0.
+	// Setting all envelope settings except envelope direction to 0 is the best way to mute a channel without powering off the channel's DAC (powering off the channel's DAC would cause a pop sound).
 	GB_apu_write(&(self->gb), GB_IO_NR12, 8);
 	GB_apu_write(&(self->gb), GB_IO_NR22, 8);
 	GB_apu_write(&(self->gb), GB_IO_NR32, 0);
@@ -63,13 +69,11 @@ void resetInternalState(GameBoyPluginCore* self, double rate, bool isInstantiate
 	// I and users should avoid anything that turns the channel off. It will cause the next note played to be too loud
 	
 	for (int i=0; i<4; i++){
-		self->legatoState[i]=false;
-		self->disableNoteOff[i]=false;
 		self->userVol[i]=0x0F; // GB format!
 		self->userEnvLen[i]=0; 
 		self->userEnvDirec[i]=0; // an env direc of "up" and an env length of 0 leads to volume weirdness.
 		self->userSoundLen[i]=0;
-		self->lastMidiNote[i]=72; // C4
+		self->lastMidiNote[i]=0xFF; // C4
 		self->lastMidiPitchBend[i]=0x2000; // center.
 	}
 	self->userVol[2]=1;
@@ -320,7 +324,8 @@ std::pair<float, float> processFrame(GameBoyPluginCore* self, std::vector<midiMe
 							GB_apu_write(&(self->gb), GB_IO_NR12 + channel*5, regVal);
 						}
 						break;
-					// TODO: find a gbs to TEST sound length and sweep settings.
+					// TODO: find a gbs to TEST sound length settings.
+					// TODO: BUG: CGB-BPJE-USA.gbs subsong 2 shows that sweep is not functioning correctly. Downward pitch sweeps are used to simulate the sound of a tom drum or snare, but Nelly's output is too high pitched (I've been using gbsplay as "correct output"). There do not appear to be any bugs in gbs2midi's or Nelly's conversion. It is completely unknown what is causing the bug. *Help is needed to fix pitch sweep*.
 					case 14: /*sound length enable*/
 					{
 						uint8_t soundLenEn = msg[2] >= 64 ? 1 : 0;
@@ -352,19 +357,20 @@ std::pair<float, float> processFrame(GameBoyPluginCore* self, std::vector<midiMe
 						}
 						break;
 					case 17: // sweep shift
-						if (channel == 0){
+						if (channel == 0){ // high period == high frequency == high pitch.
 							uint8_t sweepShift = convertMidiValToRange(msg[2], 7);
 							regVal = GB_apu_read(&(self->gb), GB_IO_NR10);
-							regVal &= 0b01111000;
+							regVal &= 0b01111000; // zero out previous sweep shift, keep all other values.
 							regVal |= (sweepShift & 0b111);
 							GB_apu_write(&(self->gb), GB_IO_NR10, regVal);
 						}
 						break;
-					case 18: // sweep up or down. TODO: for readability, pitch should go up when cc18 is 127, and down when cc18 is 0
+					case 18: // sweep up or down. for readability, pitch should go up when cc18 is 127, and down when cc18 is 0
 						if (channel == 0){
 							uint8_t sweepDir = convertMidiValToRange(msg[2], 1);
 							regVal = GB_apu_read(&(self->gb), GB_IO_NR10);
 							regVal &= 0b01110111;
+							sweepDir ^= 1; // invert sweepDir before writing to register. In GB, 0 is "increase pitch", which is unintuitive. Inverting sweepDir before writing to the emulated GB allows the user to use a CC of 127 as "increase pitch", which is more intuitive.
 							regVal |= ((sweepDir & 1) << 3);
 							GB_apu_write(&(self->gb), GB_IO_NR10, regVal);
 						}
@@ -408,27 +414,8 @@ std::pair<float, float> processFrame(GameBoyPluginCore* self, std::vector<midiMe
 							writeNewPitchToAPU(&(self->gb), newPitch, channel, true, 0xFF); // trigger channel
 							noteTriggered[channel]=true;
 						}
-						/*
-						// TODO: do I need curWaveIndex? Maybe I should just write the new wave to the APU when I receive CC21.
-						
-						// turn off DAC
-						// write to wave ram
-						// turn on DAC
-						// trigger channel
-						// TODO: wave should ONLY be triggered when switching waves. Triggering it at any other time will unpredictably corrupt wave ram.
+						// wave should ONLY be triggered when switching waves. Triggering it at any other time will unpredictably corrupt wave ram.
 						// TODO: does wave need to be re-triggered to change the volume? My midi output suggests that it doesn't need to be re-triggered, but pandocs implies that it does: "Trigger (Write-only): Writing any value to NR34 with this bit set triggers the channel, causing the following to occur:.. ...Volume is set to contents of NR32 initial volume."
-						GB_apu_write(&(self->gb), GB_IO_NR30, 0); // turn off DAC
-						GB_advance_cycles(&(self->gb), 1); // TODO: check if advancing cycles here can mess up other channels.
-						for (uint8_t samplePairI=0; samplePairI<16; samplePairI++) { // write to wave ram
-							GB_apu_write(&(self->gb), GB_IO_WAV_START+samplePairI, self->songWaveArray[self->curWaveIndex][samplePairI]);
-						}
-						GB_advance_cycles(&(self->gb), 1);
-						GB_apu_write(&(self->gb), GB_IO_NR30, 0b10000000); // turn on DAC
-						GB_advance_cycles(&(self->gb), 1);
-						newPitch = midiNoteAndPitchBend2gbPitch(self->lastMidiNote[channel], self->lastMidiPitchBend[channel], channel, self->NOISE_PITCH_LIST); // pitch is write-only. rewrite pitch so it isn't lost.
-						writeNewPitchToAPU(&(self->gb), newPitch, channel, true, 0xFF); // trigger channel
-						noteTriggered[channel]=true;
-						*/
 						break;
 					case 53: // TODO: Reduce duplicate code.
 						self->curWaveIndexLSB=msg[2];
@@ -450,37 +437,55 @@ std::pair<float, float> processFrame(GameBoyPluginCore* self, std::vector<midiMe
 							noteTriggered[channel]=true;
 						}
 						break;
-					case 22: // disable note off
-						if (msg[2] >= 64) {
-							self->disableNoteOff[channel]=true;
-						} else {
-							self->disableNoteOff[channel]=false;
+					case 23:{ // change GB model via midi messages.
+						GB_model_t chosenModel;
+						switch (msg[2]){
+							default:
+							case 0:
+								chosenModel = GB_MODEL_DMG_B;
+								break;
+							case 1:
+								chosenModel = GB_MODEL_SGB_NTSC;
+								break;
+							case 2:
+								chosenModel = GB_MODEL_SGB_PAL;
+								break;
+							case 3:
+								chosenModel = GB_MODEL_SGB_NTSC_NO_SFC;
+								break;
+							case 4:
+								chosenModel = GB_MODEL_SGB_PAL_NO_SFC;
+								break;
+							case 5:
+								chosenModel = GB_MODEL_SGB2;
+								break;
+							case 6:
+								chosenModel = GB_MODEL_SGB2_NO_SFC;
+								break;
+							case 7:
+								chosenModel = GB_MODEL_CGB_C;
+								break;
+							case 8:
+								chosenModel = GB_MODEL_CGB_E;
+								break;
+							case 9:
+								chosenModel = GB_MODEL_AGB;
+								break;
+							case 10:
+								chosenModel = GB_MODEL_AGB_NATIVE;
+								break;
 						}
+						self->gb.model = chosenModel;
+						resetInternalState(self, false, false);
+						self->gb.model = chosenModel;
 						break;
-					case 68: // MIDI_CTL_LEGATO_FOOTSWITCH. when on, new notes will only change pitch without retriggering the note.
-						if (channel<4) {
-							if (msg[2] >= 64) {
-								self->legatoState[channel] = true;
-								if (noteOn[channel]==true) { // when a legatoState change happens at the same time as a note, the note should immediately be affected by the legatoState change.
-									newPitch = midiNoteAndPitchBend2gbPitch(self->lastMidiNote[channel], self->lastMidiPitchBend[channel], channel, self->NOISE_PITCH_LIST); // pitch is write-only. rewrite pitch so it isn't lost.
-									writeNewPitchToAPU(&(self->gb), newPitch, channel, false, 0xFF);
-								}
-							} else {
-								self->legatoState[channel] = false;
-								if (noteOn[channel]==true) { // when a legatoState change happens at the same time as a note, the note should immediately be affected by the legatoState change.
-									newPitch = midiNoteAndPitchBend2gbPitch(self->lastMidiNote[channel], self->lastMidiPitchBend[channel], channel, self->NOISE_PITCH_LIST); // pitch is write-only. rewrite pitch so it isn't lost.
-									writeNewPitchToAPU(&(self->gb), newPitch, channel, true, 0xFF);
-									noteTriggered[channel]=true;
-								}
-							}
-						}
-						break;
+					}
 					default:
 						break;
 				}
 				break;
 			case 0x80: // MIDI_MSG_NOTE_OFF
-				if (noteOn[channel]==false && self->legatoState[channel]==false && self->disableNoteOff[channel]==false) { // ?
+				if (noteOn[channel]==false) { // This noteOn variable only tracks if a noteOn has been sent at this exact time. If a Note On and a Note Off occur at the same time on the same channel, the Note On should take priority.
 					if (channel!=2) {
 						uint8_t tempReg = GB_apu_read(&(self->gb), GB_IO_NR12 + channel*5);
 						uint8_t envDirec = tempReg & 0b00001000;
@@ -493,16 +498,13 @@ std::pair<float, float> processFrame(GameBoyPluginCore* self, std::vector<midiMe
 							case 1:
 								curVol=self->gb.apu.square_channels[1].current_volume;
 								break;
-							//case 2:
-							//	curVol=GB_apu_read(&(self->gb), GB_IO_NR32) & 0b01100000; // exact number doesn't matter, I'm just checking if this is zero or not
-							//	break;
 							case 3:
 								curVol=self->gb.apu.noise_channel.current_volume;
 								break;
 							default:
 								break;
 						}
-						if (GB_apu_read(&(self->gb), GB_IO_NR52) & (0b00000001 << channel) && !((curVol==0 && envDirec == 0/*down*/) || (curVol==0 && envLen==0))) { // if channel is enabled AND the current volume is greater than 0. make sure a false positive doesn't happen when a channel starts at 0 vol then goes up via envelope.
+						if (GB_apu_read(&(self->gb), GB_IO_NR52) & (0b00000001 << channel) && !((curVol==0 && envDirec == 0/*down*/) || (curVol==0 && envLen==0)) && self->lastMidiNote[channel] == msg[1]) { // if channel is enabled AND the current volume is greater than 0. make sure a false positive doesn't happen when a channel starts at 0 vol then goes up via envelope. Do not silence the channel if the midi note that's currently ending is different from the most recent note-on; this makes it possible to clearly disable note-offs for specific notes by having the note ends trail and overlap each other.
 							regVal = 0b00001000; // set envelope direction to "up" to silence the channel WITHOUT turning off the DAC (which could cause a pop)
 							GB_apu_write(&(self->gb), GB_IO_NR12 + channel*5, regVal);
 							newPitch = midiNoteAndPitchBend2gbPitch(self->lastMidiNote[channel], self->lastMidiPitchBend[channel], channel, self->NOISE_PITCH_LIST); // pitch is write-only. rewrite pitch so it isn't lost.
@@ -513,14 +515,11 @@ std::pair<float, float> processFrame(GameBoyPluginCore* self, std::vector<midiMe
 						uint8_t curVol=GB_apu_read(&(self->gb), GB_IO_NR32) & 0b01100000; // exact number doesn't matter, I'm just checking if this is zero or not
 						if (GB_apu_read(&(self->gb), GB_IO_NR52) & 0b00000100 && curVol > 0) { // if channel is enabled AND the current volume is greater than 0.
 							GB_apu_write(&(self->gb), GB_IO_NR32, 0); // set volume to 0
-							//newPitch = midiNoteAndPitchBend2gbPitch(self->lastMidiNote[channel], self->lastMidiPitchBend[channel], channel, self->NOISE_PITCH_LIST); // pitch is write-only. rewrite pitch so it isn't lost.
-							//writeNewPitchToAPU(&(self->gb), newPitch, channel, true); // have to retrigger the channel for the silence to take effect.
-							//noteTriggered[channel]=true;
 						} 
 					}
 				}
 				break;
-			case 0x90: // MIDI_MSG_NOTE_ON
+			case 0x90:{ // MIDI_MSG_NOTE_ON
 				// write reg
 				//printf("Midi channel %u: note %u on.\n", channel, msg[1] & 0x7F);
 				// "This time field [ev->time] is a timestamp, but not in real-world time units (like seconds or milliseconds). Instead, it's measured in frames relative to the start of the current audio block."
@@ -551,12 +550,14 @@ std::pair<float, float> processFrame(GameBoyPluginCore* self, std::vector<midiMe
 				}
 				
 				// play note
-				if (self->legatoState[channel] == false){isTrigger=true; noteTriggered[channel] = channel == 2 ? false : true;}
+				uint8_t velocity = msg[2];
+				if (velocity >= 64){isTrigger=true; noteTriggered[channel] = channel == 2 ? false : true;}
 				newPitch = midiNoteAndPitchBend2gbPitch(msg[1] & 0x7F, self->lastMidiPitchBend[channel], channel, self->NOISE_PITCH_LIST);
 				writeNewPitchToAPU(&(self->gb), newPitch, channel, channel==2 ? false : isTrigger, 0xFF);
 				
 				self->lastMidiNote[channel] = msg[1] & 0x7F;
 				break;
+			}
 			case 0xE0: // MIDI_MSG_PITCH
 				if (channel!=3) {
 					uint16_t midiPitchBend = (((uint16_t)msg[2] & 0x7F)<<7) | (msg[1] & 0x7F);

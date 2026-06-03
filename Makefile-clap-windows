@@ -13,5 +13,5 @@ timing.o: src/furnace-tracker-sameboy-core/timing.c
 	$(CC) -c $^ -o $@ 
 
 clean:
-	rm *.o
-	rm nellyGB.clap
+	-rm *.o
+	-rm nellyGB.clap
