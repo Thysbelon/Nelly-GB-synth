@@ -14,12 +14,12 @@ An LV2 and CLAP synthesizer plugin that emulates the Game Boy's APU and converts
 	00 00 00 00 00 00 00 00 00 00 00 00 0F 0F 00 00 00 00 00 00 00 00 00 00 00 00 00 00 0F 0F 00 00 
 	F7
 	```  
-	The plugin currently doesn't have a user interface, so I recommend using [Furnace](https://github.com/tildearrow/furnace)'s wavetable editor to create waves, then copy and paste the hexadecimal representation of the wave data into a midi sysex message.
+	The plugin doesn't have a user interface, so I recommend using [Furnace](https://github.com/tildearrow/furnace)'s wavetable editor to create waves, then copy and paste the hexadecimal representation of the wave data into a midi sysex message.
 - Midi Note On:  
 	This midi event affects multiple GB registers:  
 	- Sets the pitch to the pitch of the note
-	- Triggers the channel if Legato Mode is off.
-	- Resets the volume (and envelope) of the channel if it was silenced by a note off event. The values are reset to whatever the last CC-defined value was.
+	- Triggers the channel if the velocity of the note is greater than or equal to 64
+	- Resets the volume (and envelope) of the channel if it was silenced by a note off event The values are reset to whatever the last CC-defined value was.
 - Midi Note Off:  
 	Silences the channel.  
 	(On channels with an envelope, envelope direction will be set to "up" and envelope length will be set to zero.)  
@@ -53,12 +53,25 @@ An LV2 and CLAP synthesizer plugin that emulates the Game Boy's APU and converts
 	Sets whether the noise should be long (percussive) or short (slightly melodic). 0 is long and 127 is short.
 - Wave Index Selector (CC21 and CC53) (custom):  
 	A 14-bit combined CC. CC21 is the MSB and CC53 is the LSB. Sets the waveform to use for the wave channel from the list given in a sysex message. A midi file can have up to 16383 waves.
-- Disable Note Off (CC22) (custom):  
-	Doesn't affect any one GB register. When this CC is 127, midi note off events have no effect at all.
-- Legato Footswitch (CC68) (semi-custom):  
-	Doesn't affect any one GB register. When this CC is 127, Legato Mode is turned on and any Midi Note On events will change pitch without triggering the channel and resetting envelopes. (midi note off events also have no effect when Legato Mode is on)
 
 ## Usage Tips
+
+### Disable Midi Reset on Playback Start, Stop, and Skip in your DAW
+
+Nelly doesn't have a user interface, it relies on Midi messages to set all of its settings. Because of this, it is important to disable any Midi Reset features in a DAW so that the midi messages sent to Nelly match up with the Midi messages you are sending.
+
+<!--
+If you do want to do a Midi Reset, please use the GM Reset universal sysex:  
+```
+F0 7E 7F 09 01 F7
+```
+-->
+
+### How to Disable Attack on Notes / Play Legato
+
+If you want to smoothly play many notes in succession, without resetting the envelope, as if all of the notes were a single note with pitch bend, this tip will be helpful.
+
+Set the velocity of all but the first note in the legato sequence to less than half (velocity < 64); this disables re-triggering the Game Boy channel on a note on. Then, select the note ends of every note in the legato sequence and extend them slightly so that the notes overlap each other; this plugin usually silences the Game Boy channel during a Midi Note Off event, overlapping the notes will disable that silencing, the overlapping notes will not play two notes at once because each channel of the Game Boy is monophonic.
 
 ### I Recommend Reading Game Boy APU Documentation
 
@@ -66,13 +79,17 @@ Because this plugin converts midi events to Game Boy APU register writes, unders
 
 ### You May Hear Loud Notes When Seeking Through a Song
 
-After a midi note off event, the plugin will silence that channel; however, if you seek to a large gap in between two notes, the plugin will "forget" that the channel should be silent right now and play a very loud note.  
+After a midi note off event, the plugin will silence that channel; however, if you seek to a large gap in between two notes, the plugin may "forget" that the channel should be silent right now and play a very loud note.  
 
 To work around this, it is recommended to manually silence the channel for long gaps in notes. You can manually silence a channel by setting volume (CC07) to 0; for all channels except wave, you will also need to set envelope direction (CC12) to 127 (to prevent an audio pop) and insert a short note (to trigger the channel so that the volume change is read).
 
+(This may no longer be an issue in v3.0.0)
+
+<!--
 ### Close Notes Silencing Each Other
 
 If, when editing the song, you notice that notes right next to eachother seem to be silencing eachother, try zooming in very closely; you'll likely see a very small overlap between the two notes. Remove this overlap so the notes will play properly.
+-->
 
 ### If Playback is Paused, the Wave Channel Will Be Inaudible On the Piano Roll
 
