@@ -19,7 +19,7 @@ An LV2 and CLAP synthesizer plugin that emulates the Game Boy's APU and converts
 	This midi event affects multiple GB registers:  
 	- Sets the pitch to the pitch of the note
 	- Triggers the channel if the velocity of the note is greater than or equal to 64
-	- Resets the volume (and envelope) of the channel if it was silenced by a note off event The values are reset to whatever the last CC-defined value was.
+	- Resets the volume (and envelope) of the channel if it was silenced by a note off event. The values are reset to whatever the last CC-defined value was.
 - Midi Note Off:  
 	Silences the channel.  
 	(On channels with an envelope, envelope direction will be set to "up" and envelope length will be set to zero.)  
