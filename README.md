@@ -2,6 +2,8 @@
 
 An LV2 and CLAP synthesizer plugin that emulates the Game Boy's APU and converts Midi events into Game Boy APU register writes.
 
+Compatible midi files can be obtained by using [gbs2midi](https://github.com/Thysbelon/gbs2midi).
+
 ## Midi Event to Game Boy APU Register Reference
 
 - SysEx:  
