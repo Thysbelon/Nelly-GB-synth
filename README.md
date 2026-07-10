@@ -1,5 +1,7 @@
 # Nelly GB Synth
 
+**Notice**: this virtual instrument is basically finished and is unlikely to receive any new features, but any future bug fixes will likely only be made for [Thaumoc](https://github.com/Thysbelon/Thaumoc).
+
 An LV2 and CLAP synthesizer plugin that emulates the Game Boy's APU and converts Midi events into Game Boy APU register writes.
 
 Compatible midi files can be obtained by using [gbs2midi](https://github.com/Thysbelon/gbs2midi).
